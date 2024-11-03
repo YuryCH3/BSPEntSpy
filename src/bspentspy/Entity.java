@@ -1,9 +1,7 @@
 package bspentspy;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,6 +14,7 @@ public class Entity {
 	boolean autoedit = false;
 	String classname;
 	String targetname;
+	String modelname;
 	private HashMap<String, Integer> duplicates = new HashMap<String, Integer>();
 	private HashMap<Integer, Integer> uniqueKvmap = new HashMap<Integer, Integer>();
 	private HashMap<String, Integer> kvmap = new HashMap<String, Integer>();
@@ -95,7 +94,19 @@ public class Entity {
 	public void setnames() {
 		this.classname = this.getKeyValue("classname");
 		this.targetname = this.getKeyValue("targetname");
-		
+		this.modelname = this.getKeyValue("model");
+		if (!this.modelname.isBlank()) {
+			try {
+				String modelFilename = this.modelname;
+				modelFilename = Paths.get(modelFilename).getFileName().toString();
+				this.modelname = modelFilename;
+			}
+			catch (Exception e)
+			{
+//				System.err.println("Failed to get model filename from \"" + this.modelname + "\"");
+			}
+		}
+
 		String[] split = this.getKeyValue("origin").trim().split("\\s+");
 		
 		origin[0] = origin[1] = origin[2] = 0;
@@ -320,8 +331,13 @@ public class Entity {
 	}
 
 	public String toString() {
-		return this.classname + (this.targetname == null ? ""
-				: new StringBuilder().append(" (").append(this.targetname).append(")").toString());
+		if (this.targetname != null && !this.targetname.isBlank()) {
+			return this.classname + " (" + this.targetname + ")";
+		}
+		if (this.modelname != null && !this.modelname.isBlank()) {
+			return this.classname + " (" + this.modelname + ")";
+		}
+		return this.classname;
 	}
 
 	public String toStringSpecial() {

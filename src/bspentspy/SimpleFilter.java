@@ -228,7 +228,11 @@ public class SimpleFilter implements IFilter {
 			
 			return matched;
 		}
-		return ent.getKeyValue("classname").indexOf(criterium) > -1 || ent.getKeyValue("targetname").indexOf(criterium) > -1;
+		return
+				ent.getKeyValue("classname").indexOf(criterium) > -1
+						|| ent.getKeyValue("targetname").indexOf(criterium) > -1
+						|| ent.getKeyValue("model").indexOf(criterium) > -1
+				;
 	}
 	
 	private static class Replace{
