@@ -1351,6 +1351,14 @@ public class BSPEntspy {
 		return ents;
 	}
 
+	public boolean isSpropLumpsLoaded() {
+		if(map instanceof SourceBSPFile) {
+			SourceBSPFile bspmap = (SourceBSPFile)map;
+			return bspmap.isSpropLumpLoaded();
+		}
+		return false;
+	}
+
 	public boolean patchFromVMF(File vmfFile) throws LexerException, FileNotFoundException {
 		if(map == null)
 			return false;
@@ -1416,19 +1424,37 @@ public class BSPEntspy {
 				++replaced;
 			}
 		} else {
+			boolean isSpropsLoaded = this.isSpropLumpsLoaded();
 			for (int i = 0, j = 0; i < map.entities.size() && j < temp.ents.size();) {
 				Entity original = map.entities.get(i);
 				Entity replacement = temp.ents.get(j);
 
-				if (VMF.ignoredClasses.contains(original.classname)) {
-					++i;
-					continue;
+				if (isSpropsLoaded) {
+					if (!original.classname.equals("prop_static")) {
+						++i;
+						continue;
+					}
+					if (!replacement.classname.equals("prop_static")) {
+						++j;
+						continue;
+					}
 				}
-				if (VMF.ignoredClasses.contains(replacement.classname)
-						|| selected == 0 && replacement.targetname.isEmpty()) {
+				else {
+					if (VMF.ignoredClasses.contains(original.classname)) {
+						++i;
+						continue;
+					}
+					if (VMF.ignoredClasses.contains(replacement.classname)) {
+						++j;
+						continue;
+					}
+				}
+
+				if (selected == 0 && replacement.targetname.isEmpty()) {
 					++j;
 					continue;
 				}
+
 
 				// only classname needs to match
 				boolean shouldReplace = original.classname.equals(replacement.classname);
@@ -1459,7 +1485,9 @@ public class BSPEntspy {
 					++replaced;
 				} else // if entities do not match advance bsp entities until they match with vmf
 						// entities
+				{
 					++i;
+				}
 			}
 		}
 
@@ -1474,15 +1502,21 @@ public class BSPEntspy {
 	}
 
 	private static Entity replaceEntity(Entity original, Entity replacement) {
-		for (KeyValue kvl : original.keyvalues) {
-			if (!replacement.hasKeyValue(kvl.key)) {
-				replacement.addKeyVal(kvl.key, kvl.value);
+		for (KeyValue kvl : replacement.keyvalues) {
+			if (!original.hasKeyValue(kvl.key)) {
+				original.addKeyVal(kvl.key, kvl.value);
+				continue;
 			}
 
-			if (kvl.key.equals("model") && kvl.value.startsWith("*"))
-				replacement.setKeyVal("model", kvl.value);
+			if (kvl.key.equals("model")) {
+				if (original.getKeyValue(kvl.key).startsWith("*")) {
+					continue;
+				}
+			}
+
+			original.setKeyVal(kvl.key, kvl.value);
 		}
-		return replacement;
+		return original;
 	}
 
 	public ArrayList<Entity> loadEntsFromReader(Reader in) throws Exception, LexerException {
