@@ -80,6 +80,7 @@ import bspentspy.Undo.Command;
 public class BSPEntspy {
 	BSPFile map;
 	String filename;
+	String argFilename;
 	File infile;
 	JFrame frame = null;
 	JList<Entity> entList;
@@ -1117,6 +1118,13 @@ public class BSPEntspy {
 		this.frame.getContentPane().add(mainSplit);
 		this.frame.setVisible(true);
 
+		if (!this.argFilename.isEmpty()) {
+			if (BSPEntspy.this.loadfile()) {
+				System.out.println("Loaded map from args " + this.filename);
+			}
+			this.argFilename = "";
+		}
+
 		return 0;
 	}
 
@@ -1135,17 +1143,23 @@ public class BSPEntspy {
 	}
 
 	public boolean loadfile() {
-		JFileChooser chooser = new JFileChooser(preferences.get("LastFolder", System.getProperty("user.dir")));
-
-		chooser.setDialogTitle(entspyTitle + " - Open a BSP file");
-		chooser.setFileFilter(new EntFileFilter());
-		int result = chooser.showOpenDialog(this.frame);
-		if (result == JFileChooser.CANCEL_OPTION) {
-			return false;
+		if (!this.argFilename.isEmpty()) {
+			this.infile = new File(this.argFilename);
 		}
-		this.infile = chooser.getSelectedFile();
-		chooser = null;
+		else {
+			JFileChooser chooser = new JFileChooser(preferences.get("LastFolder", System.getProperty("user.dir")));
+
+			chooser.setDialogTitle(entspyTitle + " - Open a BSP file");
+			chooser.setFileFilter(new EntFileFilter());
+			int result = chooser.showOpenDialog(this.frame);
+			if (result == JFileChooser.CANCEL_OPTION) {
+				return false;
+			}
+			this.infile = chooser.getSelectedFile();
+			chooser = null;
+		}
 		this.filename = this.infile.getName();
+
 		if (!(this.infile.exists() && this.infile.canRead())) {
 			System.out.println("Can't read " + this.filename + "!");
 			return false;
@@ -1496,10 +1510,14 @@ public class BSPEntspy {
 	}
 
 	public static void main(String[] args) throws Exception {
-		String help = "Options:\n-rename <oldmapname or \"\" to deduce> <new map name> <path to materials directory>\tRenames directories and updates VMT files in specified directory.\n-help\tDisplays help.";
+		String help = "Options:\n" +
+				"-rename <oldmapname or \"\" to deduce> <new map name> <path to materials directory>\tRenames directories and updates VMT files in specified directory.\n" +
+				"-bsp <map path>\tOpens specified map\n" +
+				"-help\tDisplays help.";
 		
 		boolean runGui = true;
 		boolean failed = false;
+		String argFilename = "";
 		for(int i = 0; i < args.length && !failed; ++i) {
 			if(args[i].equals("-rename")) {
 				if(i + 3 < args.length) {
@@ -1518,6 +1536,11 @@ public class BSPEntspy {
 				i += 3;
 			} else if(args[i].equals("-help")) {
 				System.out.println(help);
+			} else if (args[i].equals("-bsp")){
+				if(i + 1 < args.length) {
+					argFilename = args[i + 1];
+				}
+				i += 1;
 			} else {
 				failed = true;
 			}
@@ -1530,6 +1553,7 @@ public class BSPEntspy {
 		if(runGui && !failed) {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 			BSPEntspy inst = new BSPEntspy();
+			inst.argFilename = argFilename;
 			inst.exec();
 		}
 	}
