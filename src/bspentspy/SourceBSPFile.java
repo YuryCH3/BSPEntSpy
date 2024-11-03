@@ -211,6 +211,9 @@ public class SourceBSPFile extends BSPFile{
 				lumpBytes.writeShort(leafCounts[i]);
 				
 				lumpBytes.write(parseByte(prop.getKeyValue("solid"), 0));
+
+				prop.parseFlagsFromKeywords();
+
 				lumpBytes.write(prop.flags);
 				lumpBytes.writeInt(parseInt(prop.getKeyValue("skin"), 0));
 				lumpBytes.writeFloat(parseFloat(prop.getKeyValue("fademindist"), 0));
@@ -402,7 +405,8 @@ public class SourceBSPFile extends BSPFile{
 				prop.setKeyVal("mindxlevel", Integer.toUnsignedString(buff.getShort()));
 				prop.setKeyVal("maxdxlevel", Integer.toUnsignedString(buff.getShort()));
 			}
-			
+
+			prop.parseFlagsToKeywords();
 			staticProps.add(prop);
 			entities.add(prop);
 		}
