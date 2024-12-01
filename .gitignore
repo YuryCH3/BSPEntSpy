@@ -5,3 +5,6 @@ bin/
 **/*.bsp
 releases/
 **/*.zip
+/out
+/.idea
+BSPEntSpy.iml

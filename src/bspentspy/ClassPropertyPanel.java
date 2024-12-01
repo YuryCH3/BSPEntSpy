@@ -716,14 +716,36 @@ public class ClassPropertyPanel extends JPanel {
 		public void changed(DocumentEvent e) {
 			String text = textField.getText().trim();
 
+
 			if (kv == null)
 				return;
 
 			kv.autoAdded = false;
 
 			if (key) {
-				kv.key = text;
-				kv.renamed = true;
+				text = text.trim();
+
+				if (text.contains(" "))
+				{
+					String[] tokens = text.split(" ", 2);
+					kv.key = tokens[0];
+					kv.value = tokens[1];
+					kv.renamed = true;
+					kv.edited = true;
+				}
+				else if (text.contains("\t"))
+				{
+					String[] tokens = text.split("\t", 2);
+					kv.key = tokens[0];
+					kv.value = tokens[1];
+					kv.renamed = true;
+					kv.edited = true;
+				}
+				else
+				{
+					kv.key = text;
+					kv.renamed = true;
+				}
 			} else {
 				kv.value = text;
 				kv.different = false;

@@ -35,11 +35,7 @@ import java.io.Writer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.*;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -81,6 +77,7 @@ public class BSPEntspy {
 	BSPFile map;
 	String filename;
 	String argFilename;
+	boolean collectStats;
 	File infile;
 	JFrame frame = null;
 	JList<Entity> entList;
@@ -843,15 +840,20 @@ public class BSPEntspy {
 		JButton findent = new JButton("Find");
 		findent.setToolTipText("Find and select next entity, hold Shift to select all");
 		findent.setMnemonic(KeyEvent.VK_F);
+
 		JButton filterEnt = new JButton("Filter");
 		filterEnt.setToolTipText("Filter the entitiy list, hold Shift to clear the filter");
 		JTextField findtext = new JTextField();
 		findtext.setToolTipText("Text to search for");
 		Box fbox = Box.createHorizontalBox();
 
+		JButton sortEnt = new JButton("Sort by name");
+		sortEnt.setToolTipText("Sort the entity list by name or by default");
+
 		fbox.add(findtext);
 		fbox.add(findent);
 		fbox.add(filterEnt);
+		fbox.add(sortEnt);
 
 		entcpl.add((Component) fbox);
 		entcpl.add((Component) entbut);
@@ -861,6 +863,8 @@ public class BSPEntspy {
 		findent.addActionListener(new GotoListen(findtext));
 		findtext.addActionListener(new FilterListen(findtext));
 		filterEnt.addActionListener(new FilterListen(findtext));
+		sortEnt.addActionListener(new SortListen());
+
 		delent.addActionListener(new ActionListener() {
 
 			public void actionPerformed(ActionEvent e) {
@@ -1120,12 +1124,122 @@ public class BSPEntspy {
 
 		if (!this.argFilename.isEmpty()) {
 			if (BSPEntspy.this.loadfile()) {
-				System.out.println("Loaded map from args " + this.filename);
+//				System.out.println("Loaded map from args " + this.filename);
 			}
 			this.argFilename = "";
 		}
 
+		if (this.collectStats) {
+//			System.exit(0);
+		}
+
 		return 0;
+	}
+
+	private void printStats() {
+
+		ArrayList<String> targetEntNames = new ArrayList<>();
+		targetEntNames.add("light_environment");
+		targetEntNames.add("env_sun");
+		targetEntNames.add("light");
+		targetEntNames.add("light_spot");
+		targetEntNames.add("env_sprite");
+		targetEntNames.add("point_spotlight");
+
+		ArrayList<String> targetProptertyNames = new ArrayList<>();
+		targetProptertyNames.add("_lightscaleHDR");
+		targetProptertyNames.add("_AmbientScaleHDR");
+		targetProptertyNames.add("HDRColorScale");
+
+		var stats = new TreeMap<String, TreeMap<String, ArrayList<Double>>>();
+
+		for (var ent : map.entities)
+		{
+			if (!targetEntNames.contains(ent.classname))
+				continue;
+
+			if (!stats.containsKey(ent.classname))
+				stats.put(ent.classname, new TreeMap<>());
+
+			var entStats = stats.get(ent.classname);
+
+			for (String propertyName : targetProptertywNames)
+			{
+				String val = ent.getKeyValue(propertyName);
+				if (val.isBlank() || val.equals("0"))
+					continue;
+
+				try
+				{
+					Double valf = Double.parseDouble(val);
+
+					if (!entStats.containsKey(propertyName))
+						entStats.put(propertyName, new ArrayList<>());
+
+					var propStats = entStats.get(propertyName);
+					propStats.add(valf);
+				}
+				catch (Exception ex)
+				{
+					System.err.println("Failed to parse " + ent.classname + "." + propertyName + ": " + "\"" + val + "\";\n" + ex);
+				}
+			}
+		}
+
+		for (var entName : targetEntNames)
+		{
+
+			var entStats = stats.get(entName);
+			if (entStats == null)
+			{
+//				System.out.format("%17s", entName);
+//				System.out.println();
+				continue;
+			}
+
+			System.out.format("%17s", entName);
+			if (entStats.isEmpty())
+			{
+				System.out.println();
+				continue;
+			}
+
+			boolean first = true;
+			for (var propStats : entStats.entrySet())
+			{
+				System.out.print(" ");
+				String fmt = first ? "%16s" : "%33s";
+				first = false;
+				System.out.format(fmt, propStats.getKey());
+				var values = propStats.getValue();
+
+				Double minVal = Collections.min(values);
+				Double maxVal = Collections.max(values);
+				Double avgVal = values.stream().mapToDouble(a -> a).average().getAsDouble();
+
+				if (values.size() == 1)
+				{
+					System.out.format("\t%.1f", avgVal);
+				}
+				else
+				{
+					if (maxVal - minVal > 1e-3)
+					{
+						System.out.format("\t%.2f", avgVal);
+						System.out.print("\tx "); System.out.print(values.size());
+						System.out.print("\tmin: "); System.out.print(minVal);
+						System.out.print("\tmax: "); System.out.print(maxVal);
+					}
+					else
+					{
+						System.out.format("\t%.1f", avgVal);
+						System.out.print("\tx "); System.out.print(values.size());
+					}
+				}
+
+				System.out.println();
+			}
+		}
 	}
 
 	public boolean setfindlist(Entity sel, DefaultComboBoxModel<Entity> model) {
@@ -1151,6 +1265,8 @@ public class BSPEntspy {
 
 			chooser.setDialogTitle(entspyTitle + " - Open a BSP file");
 			chooser.setFileFilter(new EntFileFilter());
+			chooser.setPreferredSize(new Dimension(900,600));
+
 			int result = chooser.showOpenDialog(this.frame);
 			if (result == JFileChooser.CANCEL_OPTION) {
 				return false;
@@ -1164,6 +1280,7 @@ public class BSPEntspy {
 			System.out.println("Can't read " + this.filename + "!");
 			return false;
 		}
+		System.out.println("=========================");
 		System.out.println("Reading map file " + this.filename);
 
 		preferences.put("LastFolder", this.infile.getParent());
@@ -1173,6 +1290,10 @@ public class BSPEntspy {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 			return false;
+		}
+
+		if (this.collectStats) {
+			this.printStats();
 		}
 
 		return true;
@@ -1551,6 +1672,8 @@ public class BSPEntspy {
 		
 		boolean runGui = true;
 		boolean failed = false;
+		boolean collectStats = false;
+
 		String argFilename = "";
 		for(int i = 0; i < args.length && !failed; ++i) {
 			if(args[i].equals("-rename")) {
@@ -1570,11 +1693,13 @@ public class BSPEntspy {
 				i += 3;
 			} else if(args[i].equals("-help")) {
 				System.out.println(help);
-			} else if (args[i].equals("-bsp")){
-				if(i + 1 < args.length) {
+			} else if (args[i].equals("-bsp")) {
+				if (i + 1 < args.length) {
 					argFilename = args[i + 1];
 				}
 				i += 1;
+			} else if (args[i].equals("-stats")) {
+				collectStats = true;
 			} else {
 				failed = true;
 			}
@@ -1588,6 +1713,7 @@ public class BSPEntspy {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 			BSPEntspy inst = new BSPEntspy();
 			inst.argFilename = argFilename;
+			inst.collectStats = collectStats;
 			inst.exec();
 		}
 	}
@@ -1754,6 +1880,15 @@ public class BSPEntspy {
 			} catch (Exception e) {
 				JOptionPane.showMessageDialog(frame, "Invalid filter format!", "ERROR", JOptionPane.ERROR_MESSAGE);
 			}
+		}
+	}
+
+	class SortListen implements ActionListener {
+		public SortListen() {
+		}
+
+		public void actionPerformed(ActionEvent ae) {
+			entModel.sortByName();
 		}
 	}
 
