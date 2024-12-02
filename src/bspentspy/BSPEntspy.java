@@ -1163,7 +1163,7 @@ public class BSPEntspy {
 
 			var entStats = stats.get(ent.classname);
 
-			for (String propertyName : targetProptertywNames)
+			for (String propertyName : targetProptertyNames)
 			{
 				String val = ent.getKeyValue(propertyName);
 				if (val.isBlank() || val.equals("0"))
