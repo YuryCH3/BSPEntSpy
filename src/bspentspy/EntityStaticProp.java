@@ -41,12 +41,13 @@ public class EntityStaticProp extends Entity {
 
 	// https://developer.valvesoftware.com/wiki/BSP_(Source)/Static_prop_flags
 	private static HashMap<Integer, String> propStaticFlagKeywords = new HashMap<Integer, String>();
-	static {
+	static
+	{
 //		propStaticFlagKeywords.put(0x04, "disableflashlight");
 		propStaticFlagKeywords.put(0x08, "ignorenormals");
-//		propStaticFlagKeywords.put(0x10, "disableshadows");
-//		propStaticFlagKeywords.put(0x20, "disableshadows");
-//		propStaticFlagKeywords.put(0x20, "drawinfastreflection");
+		propStaticFlagKeywords.put(0x10, "disableshadows");
+//		propStaticFlagKeywords.put(0x20, "screenspacefade");
+//		propStaticFlagKeywords.put(0x20, "drawinfastreflection ");
 		propStaticFlagKeywords.put(0x40, "disablevertexlighting");
 		propStaticFlagKeywords.put(0x80, "disableselfshadowing");
 		propStaticFlagKeywords.put(0x100, "generatelightmaps");

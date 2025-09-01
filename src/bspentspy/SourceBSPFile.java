@@ -449,7 +449,8 @@ public class SourceBSPFile extends BSPFile{
 		
 		bspfile.read(cubemapData);
 		for(int i = 0; i < numCubemaps; ++i) {
-			EntityCubemap cubemap = new EntityCubemap();		
+			EntityCubemap cubemap = new EntityCubemap();
+			System.out.println(buff.asCharBuffer());
 			int x = buff.getInt();
 			int y = buff.getInt();
 			int z = buff.getInt();

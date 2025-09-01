@@ -15,6 +15,7 @@ public class Entity {
 	String classname;
 	String targetname;
 	String modelname;
+	String texturename;
 	private HashMap<String, Integer> duplicates = new HashMap<String, Integer>();
 	private HashMap<Integer, Integer> uniqueKvmap = new HashMap<Integer, Integer>();
 	private HashMap<String, Integer> kvmap = new HashMap<String, Integer>();
@@ -95,6 +96,8 @@ public class Entity {
 		this.classname = this.getKeyValue("classname");
 		this.targetname = this.getKeyValue("targetname");
 		this.modelname = this.getKeyValue("model");
+		this.texturename = this.getKeyValue("texture");
+
 		if (!this.modelname.isBlank()) {
 			try {
 				String modelFilename = this.modelname;
@@ -336,6 +339,9 @@ public class Entity {
 		}
 		if (this.modelname != null && !this.modelname.isBlank()) {
 			return this.classname + " (" + this.modelname + ")";
+		}
+		if (this.texturename != null && !this.texturename.isBlank()) {
+			return this.classname + " (" + this.texturename + ")";
 		}
 		return this.classname;
 	}

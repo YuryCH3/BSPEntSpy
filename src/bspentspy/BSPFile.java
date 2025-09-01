@@ -4,9 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 
 import bspentspy.Entity.KeyValue;
 
@@ -195,6 +193,223 @@ public abstract class BSPFile implements AutoCloseable{
 		
 		public String toString() {
 			return "index: " + index + String.format("\toffset: %,d\tlen: %,d", offset, length);
+		}
+	}
+
+	public void printStatsLight() {
+
+		ArrayList<String> targetEntNames = new ArrayList<>();
+		targetEntNames.add("light_environment");
+		targetEntNames.add("env_sun");
+		targetEntNames.add("light");
+		targetEntNames.add("light_spot");
+		targetEntNames.add("env_sprite");
+		targetEntNames.add("point_spotlight");
+
+		ArrayList<String> targetProptertyNames = new ArrayList<>();
+		targetProptertyNames.add("_lightscaleHDR");
+		targetProptertyNames.add("_AmbientScaleHDR");
+		targetProptertyNames.add("HDRColorScale");
+
+		var stats = collectStats(targetEntNames, targetProptertyNames, false);
+		printStats(targetEntNames, stats);
+	}
+
+	public void printStatsSprops() {
+
+		ArrayList<String> targetEntNames = new ArrayList<>();
+		targetEntNames.add("prop_static");
+
+		ArrayList<String> targetProptertyNames = new ArrayList<>();
+		targetProptertyNames.add("disablevertexlighting");
+//		targetProptertyNames.add("disableshadows");
+
+		var stats = collectStats(targetEntNames, targetProptertyNames, true);
+		printStats(targetEntNames, stats);
+
+		ArrayList<String> targetProptertyNames2 = new ArrayList<>();
+//		targetProptertyNames2.add("disablevertexlighting");
+		targetProptertyNames2.add("disableshadows");
+
+		var flagStats = collectFlagStats(targetEntNames, targetProptertyNames2);
+		printFlagStats(targetEntNames, flagStats);
+	}
+
+	private TreeMap<String, TreeMap<String, ArrayList<Double>>>
+		collectFlagStats(
+				ArrayList<String> targetEntNames,
+				ArrayList<String> targetPropertyNames
+	)
+	{
+		var stats = new TreeMap<String, TreeMap<String, ArrayList<Double>>>();
+
+		for (var ent : entities)
+		{
+			if (!targetEntNames.contains(ent.classname))
+				continue;
+
+			for (String propertyName : targetPropertyNames)
+			{
+				String val = ent.getKeyValue(propertyName);
+				if (val.isBlank())
+					continue;
+
+				if (!stats.containsKey(propertyName))
+					stats.put(propertyName, new TreeMap<>());
+				var propStats = stats.get(propertyName);
+
+				try
+				{
+					Double valf = Double.parseDouble(val);
+
+					if (!propStats.containsKey(ent.modelname))
+						propStats.put(ent.modelname, new ArrayList<>());
+					var entStats = propStats.get(ent.modelname);
+
+					entStats.add(valf);
+				}
+				catch (Exception ex)
+				{
+					System.err.println("Failed to parse " + ent.classname + "." + propertyName + ": " + "\"" + val + "\";\n" + ex);
+				}
+			}
+		}
+
+		return stats;
+	}
+
+	private TreeMap<String, TreeMap<String, ArrayList<Double>>>
+	collectStats(
+			ArrayList<String> targetEntNames,
+			ArrayList<String> targetPropertyNames,
+			boolean skipzeroes
+	)
+	{
+		var stats = new TreeMap<String, TreeMap<String, ArrayList<Double>>>();
+
+		for (var ent : entities)
+		{
+			if (!targetEntNames.contains(ent.classname))
+				continue;
+
+			if (!stats.containsKey(ent.classname))
+				stats.put(ent.classname, new TreeMap<>());
+
+			var entStats = stats.get(ent.classname);
+
+			for (String propertyName : targetPropertyNames)
+			{
+				String val = ent.getKeyValue(propertyName);
+				if (val.isBlank())
+					continue;
+
+				if (val.equals("0"))
+					if (!skipzeroes)
+						continue;
+
+				try
+				{
+					Double valf = Double.parseDouble(val);
+
+					if (!entStats.containsKey(propertyName))
+						entStats.put(propertyName, new ArrayList<>());
+
+					var propStats = entStats.get(propertyName);
+					propStats.add(valf);
+				}
+				catch (Exception ex)
+				{
+					System.err.println("Failed to parse " + ent.classname + "." + propertyName + ": " + "\"" + val + "\";\n" + ex);
+				}
+			}
+		}
+
+		return stats;
+	}
+
+	private static void printFlagStats(ArrayList<String> targetEntNames, TreeMap<String, TreeMap<String, ArrayList<Double>>> stats)
+	{
+		for (var item : stats.entrySet())
+		{
+			var propName = item.getKey();
+			var entDict = item.getValue();
+
+			System.out.println();
+			System.out.format("%s", propName);
+			System.out.println();
+
+			for (var item2 : entDict.entrySet())
+			{
+				var modelName = item2.getKey();
+				var values = item2. getValue();
+
+				Double avgVal = values.stream().mapToDouble(a -> a).average().getAsDouble();
+				if (avgVal == 0)
+					continue;
+
+				System.out.format("%34s", modelName);
+				System.out.format("\t%.2f", avgVal);
+				System.out.print("\tx "); System.out.print(values.size());
+
+				System.out.println();
+
+			}
+		}
+	}
+
+	private static void printStats(ArrayList<String> targetEntNames, TreeMap<String, TreeMap<String, ArrayList<Double>>> stats) {
+		for (var entName : targetEntNames)
+		{
+			var entStats = stats.get(entName);
+			if (entStats == null)
+			{
+//				System.out.format("%17s", entName);
+//				System.out.println();
+				continue;
+			}
+
+			System.out.format("%17s", entName);
+			if (entStats.isEmpty())
+			{
+				System.out.println();
+				continue;
+			}
+
+			boolean first = true;
+			for (var propStats : entStats.entrySet())
+			{
+				System.out.print(" ");
+				String fmt = first ? "%16s" : "%33s";
+				first = false;
+				System.out.format(fmt, propStats.getKey());
+				var values = propStats.getValue();
+
+				Double minVal = Collections.min(values);
+				Double maxVal = Collections.max(values);
+				Double avgVal = values.stream().mapToDouble(a -> a).average().getAsDouble();
+
+				if (values.size() == 1)
+				{
+					System.out.format("\t%.1f", avgVal);
+				}
+				else
+				{
+					if (maxVal - minVal > 1e-3)
+					{
+						System.out.format("\t%.2f", avgVal);
+						System.out.print("\tx "); System.out.print(values.size());
+						System.out.print("\tmin: "); System.out.print(minVal);
+						System.out.print("\tmax: "); System.out.print(maxVal);
+					}
+					else
+					{
+						System.out.format("\t%.1f", avgVal);
+						System.out.print("\tx "); System.out.print(values.size());
+					}
+				}
+
+				System.out.println();
+			}
 		}
 	}
 }

@@ -472,10 +472,10 @@ public class BSPEntspy {
 		});
 		
 		JCheckBoxMenuItem editStaticProps = new JCheckBoxMenuItem("Edit Static props (EXPERIMENTAL)");
+		editStaticProps.setSelected(this.collectStats);
 		editStaticProps.setToolTipText("Edit static props");
-		editStaticProps.setEnabled(false);
 		mapmenu.add(editStaticProps);
-		
+
 		editStaticProps.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent ae) {
 				if(map == null)
@@ -485,18 +485,21 @@ public class BSPEntspy {
 					JOptionPane.showMessageDialog(frame, "Unsupported version of BSP. This option works only for Source BSP.");
 					return;
 				}
+
 				SourceBSPFile bspmap = (SourceBSPFile)map;
 				try {
 					if(editStaticProps.isSelected()) {
 						bspmap.loadStaticProps();
-					} else
+						bspmap.printStatsSprops();
+					} else {
 						bspmap.unloadStaticProps();
+					}
 				} catch(Exception e) {
 					JOptionPane.showMessageDialog(frame, "Could not load Static props!\n" + e.getMessage(), "ERROR!", JOptionPane.ERROR_MESSAGE);
 					e.printStackTrace();
 					editStaticProps.setSelected(!editStaticProps.isSelected());
 				}
-				
+
 				updateEntList(map.entities);
 			}
 		});
@@ -518,6 +521,18 @@ public class BSPEntspy {
 				}
 				if (!BSPEntspy.this.loadfile()) {
 					return;
+				}
+				else {
+					SourceBSPFile bspmap = (SourceBSPFile)map;
+					try {
+						bspmap.loadStaticProps();
+						bspmap.printStatsSprops();
+					} catch(Exception ex) {
+						JOptionPane.showMessageDialog(frame, "Could not load Static props!\n" + ex.getMessage(), "ERROR!", JOptionPane.ERROR_MESSAGE);
+						ex.printStackTrace();
+					}
+
+					updateEntList(map.entities);
 				}
 			}
 		});
@@ -1136,111 +1151,6 @@ public class BSPEntspy {
 		return 0;
 	}
 
-	private void printStats() {
-
-		ArrayList<String> targetEntNames = new ArrayList<>();
-		targetEntNames.add("light_environment");
-		targetEntNames.add("env_sun");
-		targetEntNames.add("light");
-		targetEntNames.add("light_spot");
-		targetEntNames.add("env_sprite");
-		targetEntNames.add("point_spotlight");
-
-		ArrayList<String> targetProptertyNames = new ArrayList<>();
-		targetProptertyNames.add("_lightscaleHDR");
-		targetProptertyNames.add("_AmbientScaleHDR");
-		targetProptertyNames.add("HDRColorScale");
-
-		var stats = new TreeMap<String, TreeMap<String, ArrayList<Double>>>();
-
-		for (var ent : map.entities)
-		{
-			if (!targetEntNames.contains(ent.classname))
-				continue;
-
-			if (!stats.containsKey(ent.classname))
-				stats.put(ent.classname, new TreeMap<>());
-
-			var entStats = stats.get(ent.classname);
-
-			for (String propertyName : targetProptertyNames)
-			{
-				String val = ent.getKeyValue(propertyName);
-				if (val.isBlank() || val.equals("0"))
-					continue;
-
-				try
-				{
-					Double valf = Double.parseDouble(val);
-
-					if (!entStats.containsKey(propertyName))
-						entStats.put(propertyName, new ArrayList<>());
-
-					var propStats = entStats.get(propertyName);
-					propStats.add(valf);
-				}
-				catch (Exception ex)
-				{
-					System.err.println("Failed to parse " + ent.classname + "." + propertyName + ": " + "\"" + val + "\";\n" + ex);
-				}
-			}
-		}
-
-		for (var entName : targetEntNames)
-		{
-
-			var entStats = stats.get(entName);
-			if (entStats == null)
-			{
-//				System.out.format("%17s", entName);
-//				System.out.println();
-				continue;
-			}
-
-			System.out.format("%17s", entName);
-			if (entStats.isEmpty())
-			{
-				System.out.println();
-				continue;
-			}
-
-			boolean first = true;
-			for (var propStats : entStats.entrySet())
-			{
-				System.out.print(" ");
-				String fmt = first ? "%16s" : "%33s";
-				first = false;
-				System.out.format(fmt, propStats.getKey());
-				var values = propStats.getValue();
-
-				Double minVal = Collections.min(values);
-				Double maxVal = Collections.max(values);
-				Double avgVal = values.stream().mapToDouble(a -> a).average().getAsDouble();
-
-				if (values.size() == 1)
-				{
-					System.out.format("\t%.1f", avgVal);
-				}
-				else
-				{
-					if (maxVal - minVal > 1e-3)
-					{
-						System.out.format("\t%.2f", avgVal);
-						System.out.print("\tx "); System.out.print(values.size());
-						System.out.print("\tmin: "); System.out.print(minVal);
-						System.out.print("\tmax: "); System.out.print(maxVal);
-					}
-					else
-					{
-						System.out.format("\t%.1f", avgVal);
-						System.out.print("\tx "); System.out.print(values.size());
-					}
-				}
-
-				System.out.println();
-			}
-		}
-	}
 
 	public boolean setfindlist(Entity sel, DefaultComboBoxModel<Entity> model) {
 		model.removeAllElements();
@@ -1293,7 +1203,7 @@ public class BSPEntspy {
 		}
 
 		if (this.collectStats) {
-			this.printStats();
+			this.map.printStatsLight();
 		}
 
 		return true;

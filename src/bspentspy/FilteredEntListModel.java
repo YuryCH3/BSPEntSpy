@@ -105,7 +105,7 @@ public class FilteredEntListModel extends AbstractListModel<Entity> {
 		
 		for(int i = 0; i < original.size(); ++i) {
 			indexMap[i] = -1;
-			if(filter == null || filter.match(original.get(i))) {
+			if (filter == null || filter.match(original.get(i))) {
 				originalIndices.add(i);
 				indexMap[i] = filtered.size();
 				filtered.add(original.get(i));
